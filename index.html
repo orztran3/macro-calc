@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YN8PHUxmeHXRhw7klaG3OMoV9AFwIjS2IZozhV1WMbA='; style-src 'self' 'unsafe-inline'; font-src data:; img-src 'self' data:; connect-src 'self' https://world.openfoodfacts.org https://search.openfoodfacts.org; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-SMzt2qhy/BYyLYEPcYERUxUSIhlVe3qrdTkrZE7uWWA='; style-src 'self' 'unsafe-inline'; font-src data:; img-src 'self' data:; connect-src 'self' https://world.openfoodfacts.org https://search.openfoodfacts.org; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Macros</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -341,7 +341,7 @@ body.setup .nav,body.setup .fab{display:none}
 (function(){
 'use strict';
 if(window.top!==window.self){ const m=document.getElementById('app'); m.textContent=''; const p=document.createElement('p'); p.className='loading'; p.textContent='For your security, Macros can’t be opened inside another page. Open it directly instead.'; m.appendChild(p); document.querySelector('.nav').hidden=true; return; }
-const VERSION='2.18';
+const VERSION='2.19';
 /* ---------- data ---------- */
 const DATA=JSON.parse(document.getElementById('afcd').textContent);
 const PRESETS=JSON.parse(document.getElementById('presets').textContent);
@@ -402,7 +402,9 @@ function daysBetween(a,b){return Math.round((parseD(b)-parseD(a))/864e5);}
 function dateLabel(s){const t=todayStr();if(s===t)return 'Today';if(s===shiftDate(t,-1))return 'Yesterday';if(s===shiftDate(t,1))return 'Tomorrow';return parseD(s).toLocaleDateString('en-AU',{weekday:'long'});}
 function dateLong(s){return parseD(s).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'long',year:'numeric'});}
 function dateShort(s){return parseD(s).toLocaleDateString('en-AU',{day:'numeric',month:'short'});}
-function num(x,u){ if(!isFinite(x))x=0; if(u==='kcal'||(u==='mg'&&Math.abs(x)>=10)||Math.abs(x)>=100) return Math.round(x).toLocaleString('en-AU'); return String(Math.round(x*10)/10); }
+let EPREF='kcal';   // display only: everything is stored in kcal
+const EUL=()=>EPREF==='kJ'?'kJ':'kcal';
+function num(x,u){ if(!isFinite(x))x=0; if(u==='kcal'&&EPREF==='kJ') return (Math.round(x*4.184/10)*10).toLocaleString('en-AU'); if(u==='kcal'||(u==='mg'&&Math.abs(x)>=10)||Math.abs(x)>=100) return Math.round(x).toLocaleString('en-AU'); return String(Math.round(x*10)/10); }
 const qtyStr=q=>String(Math.round(q*100)/100);
 const ZERO=()=>{const o={};for(const k of ORDER)o[k]=0;return o;};
 function scaleV(v,f){const o={};for(const k of ORDER)o[k]=(v&&v[k]||0)*f;return o;}
@@ -593,13 +595,13 @@ function todayIdeas(){
 }
 const closeTxt=cl=>cl.slice().sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>NEED_NAME[x[0]]+' +'+x[1]+'%').join(', ');
 function ideaRow(m,protein){ const c=m.c, extra=closeTxt(m.closes.filter(x=>x[0]!=='p')), main=protein?('+'+num(m.v.p)+' g protein'+(extra?', '+extra:'')):closeTxt(m.closes);
-  return `<div class="idea"><div class="idea-t"><b>${esc(c.label)}</b><span>${esc(c.txt)}, ${num(m.v.kcal,'kcal')} kcal</span><small>${esc(main)}</small></div><div class="idea-b"><button class="primary small" data-a="ideaAdd" data-id="${esc(c.id)}" data-g="${Math.round(m.g)}">Add</button><button class="icon" data-a="ideaNo" data-id="${esc(c.id)}" aria-label="Don’t suggest ${esc(c.label)}">✕</button></div></div>`; }
+  return `<div class="idea"><div class="idea-t"><b>${esc(c.label)}</b><span>${esc(c.txt)}, ${num(m.v.kcal,'kcal')} ${EUL()}</span><small>${esc(main)}</small></div><div class="idea-b"><button class="primary small" data-a="ideaAdd" data-id="${esc(c.id)}" data-g="${Math.round(m.g)}">Add</button><button class="icon" data-a="ideaNo" data-id="${esc(c.id)}" aria-label="Don’t suggest ${esc(c.label)}">✕</button></div></div>`; }
 function ideasCardHTML(){
   if(UI.date<todayStr()) return ''; const day=getDay(UI.date); if(!day.entries.length) return '';
   const R=todayIdeas(); if(!R.lows.length&&R.gapP<15) return '';
   UI.ideasShown=R.prot.concat(R.micro).map(x=>x.c.id);
   const lowTxt=R.lows.slice(0,2).map(x=>capName(x.k)+' '+Math.round(x.p*100)+'%').join(', ')||'Protein '+Math.round(R.tot.p/R.t.p*100)+'%';
-  const sub=(R.rem>0?num(R.rem,'kcal')+' kcal left. ':'No calories left. ')+'Lowest: '+lowTxt;
+  const sub=(R.rem>0?num(R.rem,'kcal')+' '+EUL()+' left. ':'No calories left. ')+'Lowest: '+lowTxt;
   const imp=R.lows.slice(0,5).map(x=>({k:x.k,b:Math.round(x.p*100),a:Math.round(R.after[x.k]/R.t[x.k]*100)})).filter(x=>x.a>=x.b+3);
   const n=R.prot.length+R.micro.length;
   const body=(R.prot.length?`<p class="lbl">Protein: ${num(R.gapP)} g to go. Pick one or two</p>${R.prot.map(m=>ideaRow(m,true)).join('')}`:'')
@@ -617,7 +619,7 @@ function weekIdeasHTML(avg,t,n){
   for(const lw of lows){ const k=lw.k, gap=Math.max(0,t[k]-avg[k]);
     const opts=pool.map(c=>({c,v:ideaVec(c,c.g)})).filter(o=>o.v[k]/t[k]>=0.08).map(o=>Object.assign(o,{sc:(o.v[k]/t[k])/(o.v.kcal/100+1)-ideaPenalty(o.v,{t,tot:avg})*0.1})).sort((a,b)=>b.sc-a.sc);
     const g=new Set(), pick=[]; for(const o of opts){ if(g.has(o.c.grp)) continue; g.add(o.c.grp); pick.push(o); if(pick.length>=2) break; }
-    html+=`<div class="wi"><b>${capName(k)}</b><span class="wn">averaging ${Math.round(lw.p*100)}% of target</span>`+(pick.length?`<ul>${pick.map(o=>{ const raw=Math.ceil(gap*7/Math.max(0.01,o.v[k])); return `<li>${esc(o.c.label)} (${esc(o.c.txt)}): +${Math.round(o.v[k]/t[k]*100)}% of a day, ${num(o.v.kcal,'kcal')} kcal. ${raw<=7?'About '+Math.max(1,raw)+'× a week closes the gap.':'Daily helps, but it won’t close the gap alone.'}</li>`; }).join('')}</ul>`:'<p class="fine" style="margin:4px 0 0">No single food on the list closes this one.</p>')+(k==='vd'?'<p class="fine" style="margin:4px 0 0">Vitamin D is hard to get from food. If it stays low, ask your GP.</p>':'')+'</div>';
+    html+=`<div class="wi"><b>${capName(k)}</b><span class="wn">averaging ${Math.round(lw.p*100)}% of target</span>`+(pick.length?`<ul>${pick.map(o=>{ const raw=Math.ceil(gap*7/Math.max(0.01,o.v[k])); return `<li>${esc(o.c.label)} (${esc(o.c.txt)}): +${Math.round(o.v[k]/t[k]*100)}% of a day, ${num(o.v.kcal,'kcal')} ${EUL()}. ${raw<=7?'About '+Math.max(1,raw)+'× a week closes the gap.':'Daily helps, but it won’t close the gap alone.'}</li>`; }).join('')}</ul>`:'<p class="fine" style="margin:4px 0 0">No single food on the list closes this one.</p>')+(k==='vd'?'<p class="fine" style="margin:4px 0 0">Vitamin D is hard to get from food. If it stays low, ask your GP.</p>':'')+'</div>';
   }
   return html+'<p class="fine">Based on your logged days, food only. Not medical advice.</p>';
 }
@@ -632,7 +634,7 @@ function boostIdeas(r){
 }
 function boostHTML(r){
   if(r.restaurant) return ''; const picks=boostIdeas(r);
-  const body=picks.length?`<p class="fine" style="margin-top:0">Aiming for a third of your daily needs per serve. Amounts are for the whole recipe.</p>`+picks.map(p=>`<div class="idea"><div class="idea-t"><b>Add ${p.total} g ${esc(p.m.c.label)}</b><span>${Math.round(p.m.g)} g per serve, +${num(p.m.v.kcal,'kcal')} kcal per serve</span><small>${esc(closeTxt(p.daily)||'small boost')} per serve</small></div><div class="idea-b"><button class="primary small" data-a="boostAdd" data-fid="${esc(p.m.c.id)}" data-g="${p.total}">Add</button></div></div>`).join(''):'<p class="more">This recipe already gives a good share of each nutrient per serve.</p>';
+  const body=picks.length?`<p class="fine" style="margin-top:0">Aiming for a third of your daily needs per serve. Amounts are for the whole recipe.</p>`+picks.map(p=>`<div class="idea"><div class="idea-t"><b>Add ${p.total} g ${esc(p.m.c.label)}</b><span>${Math.round(p.m.g)} g per serve, +${num(p.m.v.kcal,'kcal')} ${EUL()} per serve</span><small>${esc(closeTxt(p.daily)||'small boost')} per serve</small></div><div class="idea-b"><button class="primary small" data-a="boostAdd" data-fid="${esc(p.m.c.id)}" data-g="${p.total}">Add</button></div></div>`).join(''):'<p class="more">This recipe already gives a good share of each nutrient per serve.</p>';
   return grp('boost','Boost this recipe',picks.length?picks.length+' ideas':'Already well covered',body);
 }
 function refreshRecipe(r){ syncOpen(); $('#rtot').innerHTML=panelHTML(r); const b=$('#rboost'); if(b) b.innerHTML=boostHTML(r); }
@@ -654,7 +656,7 @@ let SH=null;
 /* ---------- views ---------- */
 function syncOpen(){ $$('details[data-g]').forEach(d=>{ UI.open[d.dataset.g]=d.open; }); }
 function render(){
-  syncOpen();
+  syncOpen(); EPREF=(Store.pid&&hasProfile()&&getProfile().eu==='kJ')?'kJ':'kcal'; NUT.kcal[1]=EUL();
   let v=UI.view; if(!Store.pid||!hasProfile()){ if(v!=='setup') startSetup(false); v='setup'; }
   document.body.classList.toggle('setup',v==='setup');
   $('#app').innerHTML= v==='setup'?viewSetup(): v==='recipes'?viewRecipes(): v==='recipe'?viewRecipe(): v==='foods'?viewFoods(): v==='weight'?(UI.ptab==='weight'?viewWeight():viewReport()): v==='profile'?viewProfile(): viewToday();
@@ -674,9 +676,9 @@ function viewToday(){
   let meals='';
   for(const [mk,mn] of MEALS){
     const es=day.entries.filter(e=>e.meal===mk),cv=new Map(es.map(e=>[e,entryCons(e)])),kc=es.reduce((s,e)=>s+cv.get(e).kcal,0);
-    meals+=`<section class="meal"><div class="meal-h"><h3>${mn}</h3>${es.length?`<span class="kc">${num(kc,'kcal')} kcal</span>`:''}</div>`;
+    meals+=`<section class="meal"><div class="meal-h"><h3>${mn}</h3>${es.length?`<span class="kc">${num(kc,'kcal')} ${EUL()}</span>`:''}</div>`;
     if(es.length) meals+=`<ul class="entries">${es.map(e=>`<li><button class="entry" data-a="entry" data-id="${esc(e.id)}"><span class="en">${esc(e.name)}<small>${e.kind==='quick'?'Quick add':qtyStr(e.qty)+' '+esc(e.unit==='serve'?(e.qty==1?'serve':'serves'):e.unit)}</small></span><span class="ek">${num(cv.get(e).kcal,'kcal')}<small>${num(cv.get(e).p)} g protein</small></span></button></li>`).join('')}</ul>`;
-    else { const l=lastMealDay(mk); meals+= l?`<div class="empty-meal"><button class="link" data-a="quickCopy" data-meal="${mk}" data-d="${esc(l.date)}">Copy ${mn.toLowerCase()} from ${whenLabel(l.date)} (${num(l.es.reduce((s,e)=>s+entryCons(e).kcal,0),'kcal')} kcal)</button><button class="link quiet" data-a="copySheet" data-meal="${mk}">Other days</button></div>`:`<div class="empty-meal">Nothing logged yet.</div>`; }
+    else { const l=lastMealDay(mk); meals+= l?`<div class="empty-meal"><button class="link" data-a="quickCopy" data-meal="${mk}" data-d="${esc(l.date)}">Copy ${mn.toLowerCase()} from ${whenLabel(l.date)} (${num(l.es.reduce((s,e)=>s+entryCons(e).kcal,0),'kcal')} ${EUL()})</button><button class="link quiet" data-a="copySheet" data-meal="${mk}">Other days</button></div>`:`<div class="empty-meal">Nothing logged yet.</div>`; }
     meals+='</section>';
   }
   // micronutrients: neutral while the day is in progress, status colours once it's over; limits warn any time
@@ -688,9 +690,9 @@ function viewToday(){
   return `
   <header class="top"><div class="datenav"><button class="icon" data-a="day" data-n="-1" aria-label="Previous day">‹</button><button class="datetitle" data-a="today"><h1>${dateLabel(UI.date)}</h1><small>${dateLong(UI.date)}</small></button><button class="icon" data-a="day" data-n="1" aria-label="Next day">›</button></div>${whoChip()}</header>
   <section class="energy" aria-label="Energy">
-    <div class="e-line"><span class="e-num">${num(tot.kcal,'kcal')}</span><span class="e-unit">kcal eaten</span></div>
+    <div class="e-line"><span class="e-num">${num(tot.kcal,'kcal')}</span><span class="e-unit">${EUL()} eaten</span></div>
     <div class="ruler${over?' over':''}" style="--step:${step.toFixed(3)}%"><div class="fill" style="width:${(pct*100).toFixed(1)}%"></div><div class="ticks"></div></div>
-    <div class="e-sub"><span><b>${num(Math.abs(left),'kcal')} kcal ${over?'over':'left'}</b></span><span class="muted">Target ${num(t.kcal,'kcal')}</span></div>
+    <div class="e-sub"><span><b>${num(Math.abs(left),'kcal')} ${EUL()} ${over?'over':'left'}</b></span><span class="muted">Target ${num(t.kcal,'kcal')}</span></div>
     ${consSettings().on?'<button class="cons" data-a="consInfo">Counting conservatively. <b>Change</b></button>':''}
   </section>
   <div class="mgrid">${macro('p')}${macro('c')}${macro('f')}${macro('fib')}${limTile('fsug','Sugars (free)','g',`${num(tot.sug)} g total`)}${limTile('na','Sodium','mg')}</div>
@@ -710,14 +712,14 @@ function viewToday(){
 function viewRecipes(){
   const rs=allRecipes();
   return `<header class="top"><h1>Recipes</h1><button class="primary small" data-a="newRecipe">New recipe</button></header>
-  <ul class="rlist">${rs.map(r=>{ const c=recipeCalc(r); return `<li><button class="ritem" data-a="openRecipe" data-id="${esc(r.id)}"><span class="rn">${isFav('recipe',r.id)?'<span class="muted">★ </span>':''}${esc(r.name)}<small>${c.serves} ${c.serves==1?'serve':'serves'}, ${r.items.length} ingredients</small></span><span class="rk">${num(c.per.kcal,'kcal')} kcal<small>${num(c.per.p)} g protein per serve</small></span></button></li>`; }).join('')}</ul>
+  <ul class="rlist">${rs.map(r=>{ const c=recipeCalc(r); return `<li><button class="ritem" data-a="openRecipe" data-id="${esc(r.id)}"><span class="rn">${isFav('recipe',r.id)?'<span class="muted">★ </span>':''}${esc(r.name)}<small>${c.serves} ${c.serves==1?'serve':'serves'}, ${r.items.length} ingredients</small></span><span class="rk">${num(c.per.kcal,'kcal')} ${EUL()}<small>${num(c.per.p)} g protein per serve</small></span></button></li>`; }).join('')}</ul>
   ${rs.length?'':'<p class="muted">No recipes yet. Create one to log your regular meals in one tap.</p>'}`;
 }
 function ingHTML(it,i){
   const f=getFood(it.fid);
   if(!f) return `<li class="ing missing"><div class="ing-n">Missing food<small>This food was deleted. Remove it or add a replacement.</small></div><button class="ghost small" data-a="rmIng" data-i="${i}">Remove</button></li>`;
   const units=unitsOf(f),g=gramsOf(f,it.qty,it.unit);
-  return `<li class="ing"><div class="ing-n">${esc(f.name)}<small id="ik${i}">${num(f.v.kcal*g/100,'kcal')} kcal, ${num(f.v.p*g/100)} g protein</small></div>
+  return `<li class="ing"><div class="ing-n">${esc(f.name)}<small id="ik${i}">${num(f.v.kcal*g/100,'kcal')} ${EUL()}, ${num(f.v.p*g/100)} g protein</small></div>
   <input class="num-in" type="number" inputmode="decimal" step="any" min="0" value="${qtyStr(it.qty)}" data-in="iqty" data-i="${i}" aria-label="Amount of ${esc(f.name)}">
   <select data-in="iunit" data-i="${i}" aria-label="Unit for ${esc(f.name)}">${units.map(u=>`<option${u[0]===it.unit?' selected':''}>${esc(u[0])}</option>`).join('')}</select>
   <button class="icon" data-a="rmIng" data-i="${i}" aria-label="Remove ${esc(f.name)}">✕</button></li>`;
@@ -726,7 +728,7 @@ function panelHTML(r){
   const c=recipeCalc(r),t=targets(),P=c.per,T=c.tot;
   const row=(k,label,sub)=>`<tr><td${sub?' class="sub"':''}>${label}</td><td>${num(P[k],NUT[k][1])} ${NUT[k][1]}</td><td>${num(T[k],NUT[k][1])} ${NUT[k][1]}</td></tr>`;
   return `<section class="nip" aria-label="Nutrition information"><h3>Nutrition information</h3>
-  <div class="nip-meta"><div><span>Serves</span><span>${c.serves}</span></div><div><span>Raw weight per serve</span><span>${num(c.grams/c.serves)} g</span></div>${consSettings().on?(()=>{ const cv=consV(entryTiers('recipe',r.id,1,'serve')||{lab:ZERO()}); return `<div class="nip-cons"><span>Counted per serve</span><span>${num(cv.kcal,'kcal')} kcal, ${num(cv.p)} g protein</span></div>`; })():''}</div>
+  <div class="nip-meta"><div><span>Serves</span><span>${c.serves}</span></div><div><span>Raw weight per serve</span><span>${num(c.grams/c.serves)} g</span></div>${consSettings().on?(()=>{ const cv=consV(entryTiers('recipe',r.id,1,'serve')||{lab:ZERO()}); return `<div class="nip-cons"><span>Counted per serve</span><span>${num(cv.kcal,'kcal')} ${EUL()}, ${num(cv.p)} g protein</span></div>`; })():''}</div>
   <table><thead><tr><th></th><th>Per serve</th><th>Whole recipe</th></tr></thead><tbody>
   ${row('kcal','Energy')}${row('p','Protein')}${row('f','Fat, total')}${row('sat','Saturated','sub')}${row('c','Carbohydrate')}${row('sug','Sugars','sub')}${row('fsug','Free sugars','sub')}${row('fib','Dietary fibre')}${row('na','Sodium')}
   </tbody></table>
@@ -773,8 +775,8 @@ function renderFoodList(){
   box.innerHTML=(list.length?list.slice(0,60).map(x=>resFood(x.item,x.unit)).join('')+(list.length>60?`<p class="more">Showing 60 of ${list.length}. Keep typing to narrow it down.</p>`:''):`<p class="more">${q?'No matches in your foods or the Australian databases.':'Nothing here yet.'}</p>`)+(UI.ff==='all'?offButton(q):'');
 }
 const favMark=(k,id)=>isFav(k,id)?'<span class="fav" aria-label="Favourite">★</span>':'';
-function resFood(f,unit){ const u=(unit&&(f.units||[]).find(x=>x[0]===unit))||((f.chain||f.market||f.supp)&&f.units&&f.units[0]); return `<button class="res" data-a="pick" data-kind="food" data-id="${esc(f.id)}"${u?` data-unit="${esc(u[0])}"`:''}><span class="res-n">${favMark('food',f.id)}${esc(f.name)}</span><span class="res-m">${tagHTML(f.src)}<span>${u?`${esc(u[0])}: ${num(f.v.kcal*u[1]/100,'kcal')} kcal`:`${num(f.v.kcal,'kcal')} kcal, ${num(f.v.p)} g protein per 100 g`}</span></span></button>`; }
-function resRecipe(r){ const c=recipeCalc(r); return `<button class="res" data-a="pick" data-kind="recipe" data-id="${esc(r.id)}"><span class="res-n">${favMark('recipe',r.id)}${esc(r.name)}</span><span class="res-m">${tagHTML('recipe')}<span>${num(c.per.kcal,'kcal')} kcal, ${num(c.per.p)} g protein per serve</span></span></button>`; }
+function resFood(f,unit){ const u=(unit&&(f.units||[]).find(x=>x[0]===unit))||((f.chain||f.market||f.supp)&&f.units&&f.units[0]); return `<button class="res" data-a="pick" data-kind="food" data-id="${esc(f.id)}"${u?` data-unit="${esc(u[0])}"`:''}><span class="res-n">${favMark('food',f.id)}${esc(f.name)}</span><span class="res-m">${tagHTML(f.src)}<span>${u?`${esc(u[0])}: ${num(f.v.kcal*u[1]/100,'kcal')} ${EUL()}`:`${num(f.v.kcal,'kcal')} ${EUL()}, ${num(f.v.p)} g protein per 100 g`}</span></span></button>`; }
+function resRecipe(r){ const c=recipeCalc(r); return `<button class="res" data-a="pick" data-kind="recipe" data-id="${esc(r.id)}"><span class="res-n">${favMark('recipe',r.id)}${esc(r.name)}</span><span class="res-m">${tagHTML('recipe')}<span>${num(c.per.kcal,'kcal')} ${EUL()}, ${num(c.per.p)} g protein per serve</span></span></button>`; }
 function favItems(){ const out=[]; for(const k of favs()){ const i=k.indexOf(':'),kind=k.slice(0,i),id=k.slice(i+1); const item=kind==='recipe'?getRecipe(id):getFood(id); if(item) out.push({kind,item}); } return out; }
 const STEM=w=>{ if(w.length>4&&w.endsWith('ies')) return w.slice(0,-3)+'y'; if(w.length>4&&/(oes|ches|shes|xes)$/.test(w)) return w.slice(0,-2); return (w.length>3&&w.endsWith('s')&&!/(ss|us)$/.test(w))?w.slice(0,-1):w; };
 const SYN={cooked:['boiled','steamed'],raw:['uncooked'],uncooked:['raw'],yogurt:['yoghurt'],yoghurt:['yogurt'],courgette:['zucchini'],aubergine:['eggplant'],cilantro:['coriander'],shrimp:['prawn'],arugula:['rocket'],cookie:['biscuit'],ground:['mince'],oatmeal:['porridge'],maize:['corn'],garbanzo:['chickpea'],fry:['chip'],mayo:['mayonnaise'],bbq:['barbecue'],snag:['sausage'],coke:['cola'],pepsi:['cola'],sprite:['lemonade'],donut:['doughnut'],sweetcorn:['corn']};
@@ -853,10 +855,10 @@ function viewReport(){
   const Y=v=>T+(H-T-B)*(1-v/maxK);
   const bars=stats.map((x,i)=>x.tot?`<rect class="rb rb-${x.st}" x="${(L+i*bw+bw*0.15).toFixed(1)}" y="${Y(x.tot.kcal).toFixed(1)}" width="${(bw*0.7).toFixed(1)}" height="${(H-B-Y(x.tot.kcal)).toFixed(1)}" rx="2"/>`:'').join('');
   const xl=stats.map((x,i)=>(UI.period==='week'||i%7===0)?`<text class="ch-lbl" x="${(L+i*bw+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle">${UI.period==='week'?parseD(x.d).toLocaleDateString('en-AU',{weekday:'narrow'}):parseD(x.d).getDate()}</text>`:'').join('');
-  const chart=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily calories for ${esc(label)} against a ${num(t.kcal,'kcal')} kcal target"><text class="ch-lbl" x="${L-4}" y="${(Y(t.kcal)+4).toFixed(1)}" text-anchor="end">${num(t.kcal,'kcal')}</text><line class="tline" x1="${L}" x2="${W-R}" y1="${Y(t.kcal).toFixed(1)}" y2="${Y(t.kcal).toFixed(1)}"/>${bars}${xl}</svg>`;
+  const chart=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily calories for ${esc(label)} against a ${num(t.kcal,'kcal')} ${EUL()} target"><text class="ch-lbl" x="${L-4}" y="${(Y(t.kcal)+4).toFixed(1)}" text-anchor="end">${num(t.kcal,'kcal')}</text><line class="tline" x1="${L}" x2="${W-R}" y1="${Y(t.kcal).toFixed(1)}" y2="${Y(t.kcal).toFixed(1)}"/>${bars}${xl}</svg>`;
   let grid='';
   if(UI.period==='month'){ const lead=(parseD(days[0]).getDay()+6)%7; grid=`<div class="cal" role="grid">${['M','T','W','T','F','S','S'].map(d=>`<div class="cal-h">${d}</div>`).join('')}${'<div></div>'.repeat(lead)}${stats.map(x=>`<button class="cal-d cd-${x.st}${x.d===today?' cd-today':''}" data-a="openDay" data-d="${x.d}"${x.future?' disabled':''} aria-label="${dateLong(x.d)}${x.tot?', '+num(x.tot.kcal,'kcal')+' kcal':', nothing logged'}"><b>${parseD(x.d).getDate()}</b>${x.tot?`<span>${num(x.tot.kcal,'kcal')}</span>`:''}</button>`).join('')}</div>`; }
-  else grid=`<ul class="wk">${stats.map(x=>`<li><button data-a="openDay" data-d="${x.d}"${x.future?' disabled':''}><span class="dot cd-${x.st}"></span><span class="wk-d">${parseD(x.d).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</span><span class="wk-v">${x.tot?`${num(x.tot.kcal,'kcal')} kcal<small>${num(x.tot.p)} g protein</small>`:'<small>Not logged</small>'}</span></button></li>`).join('')}</ul>`;
+  else grid=`<ul class="wk">${stats.map(x=>`<li><button data-a="openDay" data-d="${x.d}"${x.future?' disabled':''}><span class="dot cd-${x.st}"></span><span class="wk-d">${parseD(x.d).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</span><span class="wk-v">${x.tot?`${num(x.tot.kcal,'kcal')} ${EUL()}<small>${num(x.tot.p)} g protein</small>`:'<small>Not logged</small>'}</span></button></li>`).join('')}</ul>`;
   const row=(k,label,u,limit)=>`<tr><td>${label}</td><td>${num(avg[k],u)} ${u}</td><td class="${limit?(avg[k]>t[k]?'s-low':''):(avg[k]>=t[k]*0.9?'s-ok':'')}">${limit?'limit ':''}${num(t[k],u)} ${u}</td></tr>`;
   const microAvg=MICROS.map(k=>{ const p=t[k]?avg[k]/t[k]:0, s=status(p); return `<div class="micro"><span>${NUT[k][0]}</span><span class="amt">${num(avg[k],NUT[k][1])} ${NUT[k][1]} a day</span><span class="pct s-${s}">${Math.round(p*100)}%</span><div class="bar b-${s}"><i style="width:${Math.min(100,p*100).toFixed(1)}%"></i></div></div>`; }).join('');
   return `<header class="top"><h1>Progress</h1>${whoChip()}</header>${progressTabs()}
@@ -935,7 +937,8 @@ function viewProfile(){
   const micro=`<table class="tt"><tbody>${MICROS.map(k=>`<tr><td>${NUT[k][0]}</td><td>${num(m[k],NUT[k][1])} ${NUT[k][1]}</td></tr>`).join('')}<tr><td>Sodium (upper guide)</td><td>${num(m.na,'mg')} mg</td></tr><tr><td>Saturated fat (limit, 10% of energy)</td><td>${t.sat} g</td></tr></tbody></table>`;
   return `<header class="top"><h1>Profile</h1>${whoChip()}</header>
   ${grp('body','Body and goal',`${esc(Store.personName()||'Unnamed')}, ${p.age}, ${num(p.weight)} kg, ${goalTxt}`,body)}
-  ${grp('targets','Daily targets',`${num(t.kcal,'kcal')} kcal, ${t.p} g protein`,`<div id="tcalc">${targetsHTML()}</div>`)}
+  ${grp('energy','Energy units',p.eu==='kJ'?'Kilojoules (kJ)':'Calories (kcal)',`<p class="fine" style="margin-top:0">How energy is shown everywhere in the app. Your log is unchanged when you switch. Typed amounts (quick add, custom targets) stay in calories.</p><div class="chips">${['kcal','kJ'].map(v=>`<button class="chip" data-a="pset" data-k="eu" data-v="${v}" aria-pressed="${(p.eu||'kcal')===v}">${v==='kJ'?'Kilojoules (kJ)':'Calories (kcal)'}</button>`).join('')}</div>`)}
+  ${grp('targets','Daily targets',`${num(t.kcal,'kcal')} ${EUL()}, ${t.p} g protein`,`<div id="tcalc">${targetsHTML()}</div>`)}
   ${grp('mtargets','Micronutrient targets','Australian recommendations (NHMRC)',micro)}
   ${grp('people','People on this device',`${Store.people.length} ${Store.people.length===1?'person':'people'}`,people)}
   ${grp('cons','Conservative counting',p.cons.on?`On: ${p.cons.lab}%, ${p.cons.est}%, ${p.cons.quick}%, vitamins ${p.cons.micro}%`:'Off',consHTML(p))}
@@ -951,7 +954,7 @@ function targetsHTML(){
   const p=getProfile(),c=calcTargets(p),t=targets(),man=p.manual,cu=p.custom||{};
   const mi=(k,l,u)=>`<label class="fl">${l} (${u})<input class="num-in" type="number" inputmode="numeric" data-in="pcus" data-k="${k}" value="${cu[k]!=null?cu[k]:c[k]}"></label>`;
   return `<table class="tt"><tbody>
-  <tr><td>Resting burn (BMR)</td><td>${num(c.bmr,'kcal')} kcal</td></tr><tr><td>Maintenance</td><td>${num(c.tdee,'kcal')} kcal</td></tr><tr><td>Energy target</td><td>${num(t.kcal,'kcal')} kcal</td></tr>
+  <tr><td>Resting burn (BMR)</td><td>${num(c.bmr,'kcal')} ${EUL()}</td></tr><tr><td>Maintenance</td><td>${num(c.tdee,'kcal')} ${EUL()}</td></tr><tr><td>Energy target</td><td>${num(t.kcal,'kcal')} ${EUL()}</td></tr>
   <tr><td>Protein</td><td>${t.p} g</td></tr><tr><td>Fat</td><td>${t.f} g</td></tr><tr><td>Carbs</td><td>${t.c} g</td></tr><tr><td>Fibre</td><td>${t.fib} g</td></tr></tbody></table>
   <label class="switch">Set my own targets<input type="checkbox" data-a="pman"${man?' checked':''}></label>
   ${man?`<div class="form">${mi('kcal','Energy','kcal')}${mi('p','Protein','g')}${mi('c','Carbs','g')}${mi('f','Fat','g')}${mi('fib','Fibre','g')}</div>`:''}`;
@@ -1028,8 +1031,8 @@ function previewNT(){ let nt=entryTiers(SH.pick.kind,SH.pick.id,SH.qty,SH.unit);
 function previewN(){ return consV(previewNT()); }
 function updatePreview(){ const n=previewN(),box=$('#preview'); if(!box) return;
   const a=sumTiers(previewNT()), on=consSettings().on;
-  box.innerHTML=`<div><b>${num(n.kcal,'kcal')}</b><span>kcal</span></div><div><b>${num(n.p)}</b><span>g protein</span></div><div><b>${num(n.c)}</b><span>g carbs</span></div><div><b>${num(n.f)}</b><span>g fat</span></div>`;
-  const al=$('#avgline'); if(al) al.textContent=on?`Counted conservatively. Average values: ${num(a.kcal,'kcal')} kcal, ${num(a.p)} g protein.`:'';
+  box.innerHTML=`<div><b>${num(n.kcal,'kcal')}</b><span>${EUL()}</span></div><div><b>${num(n.p)}</b><span>g protein</span></div><div><b>${num(n.c)}</b><span>g carbs</span></div><div><b>${num(n.f)}</b><span>g fat</span></div>`;
+  const al=$('#avgline'); if(al) al.textContent=on?`Counted conservatively. Average values: ${num(a.kcal,'kcal')} ${EUL()}, ${num(a.p)} g protein.`:'';
   const c=$('#confirm'); if(c) c.disabled=!(SH.qty>0); }
 function openEntry(id){
   const day=getDay(UI.date),e=day.entries.find(x=>x.id===id); if(!e) return;
@@ -1057,7 +1060,7 @@ function openFood(id){
   const row=k=>sp?((f.v[k]||k==='kcal')?`<tr><td>${NUT[k][0]}</td><td>${num(f.v[k]/100,NUT[k][1])} ${NUT[k][1]}</td></tr>`:''):`<tr><td>${NUT[k][0]}</td><td>${num(f.v[k],NUT[k][1])} ${NUT[k][1]}</td>${u?`<td>${num(f.v[k]*u[1]/100,NUT[k][1])} ${NUT[k][1]}</td>`:''}</tr>`;
   const html=`<div class="sh-head"><span></span><div class="r"><button class="star" data-a="fav" aria-pressed="${fav}" aria-label="Favourite">${fav?'★':'☆'}</button><button class="icon" data-a="close" aria-label="Close">✕</button></div></div>
   <h2 class="pick-name">${esc(f.name)}</h2><p class="pick-note">${tagHTML(f.src)}<span>${esc(f.note||f.group||'')}</span>${f.barcode?`<span>Barcode ${esc(f.barcode)}</span>`:''}</p>
-  ${consSettings().on?(()=>{ const cv=consV({[tierOf(f)]:f.v}); return `<p class="avgline" style="margin:0 0 4px">Counted per ${sp?esc(du):'100 g'}: ${num(sp?cv.kcal/100:cv.kcal,'kcal')} kcal, ${num(sp?cv.p/100:cv.p)} g protein (${({lab:'lab or label',est:'estimate',quick:'restaurant or high-variance'})[tierOf(f)]} margin).</p>`; })():''}
+  ${consSettings().on?(()=>{ const cv=consV({[tierOf(f)]:f.v}); return `<p class="avgline" style="margin:0 0 4px">Counted per ${sp?esc(du):'100 g'}: ${num(sp?cv.kcal/100:cv.kcal,'kcal')} ${EUL()}, ${num(sp?cv.p/100:cv.p)} g protein (${({lab:'lab or label',est:'estimate',quick:'restaurant or high-variance'})[tierOf(f)]} margin).</p>`; })():''}
   <section class="nip" style="margin-top:8px"><h3>Nutrition information</h3><table><thead><tr><th></th>${sp?`<th>Per ${esc(du)}</th>`:`<th>Per 100 g</th>${u?`<th>Per ${esc(u[0])}</th>`:''}`}</tr></thead><tbody>${ORDER.map(row).join('')}</tbody></table></section>
   <div class="row-actions"><button class="primary" data-a="logFood">Log this food</button></div>
   <div class="row-actions" style="margin-top:10px">${f.src==='mine'?'<button class="ghost" data-a="editFood">Edit</button><button class="ghost" data-a="dupFood">Duplicate</button><button class="ghost danger" data-a="delFood" data-confirm="Tap again to delete">Delete</button>':'<button class="ghost" data-a="copyFood">Copy to my foods and edit</button>'}</div>`;
@@ -1199,7 +1202,7 @@ async function offQuery(q){
 async function offSearch(q){
   const box=$('#offbox'); if(!box||q.length<3) return;
   const key=norm(q);
-  const show=items=>{ if(!box.isConnected) return; box.innerHTML=items.length?`<p class="res-h">Open Food Facts</p>`+items.map(x=>`<button class="res" data-a="offPick" data-code="${esc(x.code)}"><span class="res-n">${esc(x.food.name)}</span><span class="res-m"><span class="tag">Open Food Facts</span><span>${num(x.food.v.kcal,'kcal')} kcal, ${num(x.food.v.p)} g protein per 100 g</span></span></button>`).join('')+'<p class="fine">Community-entered data. You’ll check it against the label before it’s saved.</p>'
+  const show=items=>{ if(!box.isConnected) return; box.innerHTML=items.length?`<p class="res-h">Open Food Facts</p>`+items.map(x=>`<button class="res" data-a="offPick" data-code="${esc(x.code)}"><span class="res-n">${esc(x.food.name)}</span><span class="res-m"><span class="tag">Open Food Facts</span><span>${num(x.food.v.kcal,'kcal')} ${EUL()}, ${num(x.food.v.p)} g protein per 100 g</span></span></button>`).join('')+'<p class="fine">Community-entered data. You’ll check it against the label before it’s saved.</p>'
       :'<p class="more">No Australian products with nutrition values matched. Try the brand name, or scan the barcode.</p>'; };
   const cached=OFF_CACHE.get(key); if(cached&&Date.now()-cached.t<30*60000){ show(cached.items); return; }
   if(!navigator.onLine){ box.innerHTML='<p class="more">You’re offline. Online search needs a connection; your saved foods still work.</p>'; return; }
@@ -1227,7 +1230,7 @@ function openCopy(meal){
   SH={ctx:{mode:'copy',meal},fromSearch:false};
   Sheet.open(`<div class="sh-head"><h2>${meal?'Copy '+mealName(meal).toLowerCase():'Copy a whole day'}</h2><button class="icon" data-a="close" aria-label="Close">✕</button></div>
   <p class="fine" style="margin:0 0 6px">Adds these items to ${dateLabel(UI.date)==='Today'?'today':dateLong(UI.date)}${meal?' as '+mealName(meal).toLowerCase():''}.</p>
-  ${rows.length?`<ul class="copylist">${rows.map(r=>{ const kc=r.es.reduce((s,e)=>s+entryCons(e).kcal,0); return `<li><button data-a="doCopy" data-d="${esc(r.date)}"><b>${['Today','Yesterday'].indexOf(dateLabel(r.date))>=0?dateLabel(r.date):dateLong(r.date)}</b>, ${num(kc,'kcal')} kcal<small>${esc(r.es.map(e=>e.name).join(', '))}</small></button></li>`; }).join('')}</ul>`:`<p class="more">Nothing to copy yet. Log a ${meal?mealName(meal).toLowerCase():'day'} first and it will show up here.</p>`}`);
+  ${rows.length?`<ul class="copylist">${rows.map(r=>{ const kc=r.es.reduce((s,e)=>s+entryCons(e).kcal,0); return `<li><button data-a="doCopy" data-d="${esc(r.date)}"><b>${['Today','Yesterday'].indexOf(dateLabel(r.date))>=0?dateLabel(r.date):dateLong(r.date)}</b>, ${num(kc,'kcal')} ${EUL()}<small>${esc(r.es.map(e=>e.name).join(', '))}</small></button></li>`; }).join('')}</ul>`:`<p class="more">Nothing to copy yet. Log a ${meal?mealName(meal).toLowerCase():'day'} first and it will show up here.</p>`}`);
 }
 
 /* ---------- export / import ---------- */
@@ -1256,7 +1259,7 @@ function str(x,max){ return String(x==null?'':x).slice(0,max||200); }
 function sanitizeDocs(d){
   const out={}; if(!d||typeof d!=='object') return out;
   for(const k of Object.keys(d)){ const v=d[k]; if(!v||typeof v!=='object') continue;
-    if(k==='profile'){ const p={}; for(const f of ['age','height','weight','activity','pkg','fkg']){ const x=+v[f]; if(isFinite(x)&&x>0) p[f]=x; } if(v.sex==='male'||v.sex==='female') p.sex=v.sex; if(['cut','maintain','bulk'].indexOf(v.goal)>=0) p.goal=v.goal; if(['gkg','balanced','lowcarb'].indexOf(v.split)>=0) p.split=v.split; p.manual=!!v.manual; if(v.custom&&typeof v.custom==='object'){ p.custom={}; for(const f of ['kcal','p','c','f','fib']){ const x=+v.custom[f]; if(x>0) p.custom[f]=x; } } if(v.cons&&typeof v.cons==='object'){ p.cons={on:v.cons.on!==false}; for(const f of ['lab','est','quick','micro']){ const x=+v.cons[f]; p.cons[f]=isFinite(x)&&x>=0&&x<=50?Math.round(x):DEFAULT_CONS[f]; } } out.profile=p; }
+    if(k==='profile'){ const p={}; for(const f of ['age','height','weight','activity','pkg','fkg']){ const x=+v[f]; if(isFinite(x)&&x>0) p[f]=x; } if(v.sex==='male'||v.sex==='female') p.sex=v.sex; if(['cut','maintain','bulk'].indexOf(v.goal)>=0) p.goal=v.goal; if(v.eu==='kJ'||v.eu==='kcal') p.eu=v.eu; if(['gkg','balanced','lowcarb'].indexOf(v.split)>=0) p.split=v.split; p.manual=!!v.manual; if(v.custom&&typeof v.custom==='object'){ p.custom={}; for(const f of ['kcal','p','c','f','fib']){ const x=+v.custom[f]; if(x>0) p.custom[f]=x; } } if(v.cons&&typeof v.cons==='object'){ p.cons={on:v.cons.on!==false}; for(const f of ['lab','est','quick','micro']){ const x=+v.cons[f]; p.cons[f]=isFinite(x)&&x>=0&&x<=50?Math.round(x):DEFAULT_CONS[f]; } } out.profile=p; }
     else if(k==='hidden') out.hidden={recipes:(Array.isArray(v.recipes)?v.recipes:[]).filter(x=>ID_RE.test(x))};
     else if(k==='favs') out.favs={list:(Array.isArray(v.list)?v.list:[]).filter(x=>typeof x==='string'&&/^(food|recipe):/.test(x)&&ID_RE.test(x.split(':')[1]||''))};
     else if(k==='weights'){ const log={}; for(const dk of Object.keys(v.log||{})){ const w=+v.log[dk]; if(DATE_RE.test(dk)&&w>0&&w<500) log[dk]=w; } out.weights={log}; }
@@ -1308,8 +1311,8 @@ function openBest(){
   const {l,left}=bpItems(UI.bp.src,UI.bp.mode), b=(k,v,lab)=>`<button class="chip" data-a="bpSet" data-k="${k}" data-v="${v}" aria-pressed="${UI.bp[k]===v}">${esc(lab)}</button>`;
   const html=`<div class="sh-head"><h2>Best picks</h2><button class="icon" data-a="close" aria-label="Close">✕</button></div>
   <div class="chips">${BP_SRC.map(x=>b('src',x[0],x[1])).join('')}</div><div class="chips" style="margin-top:6px">${BP_MODE.map(x=>b('mode',x[0],x[1])).join('')}</div>
-  <p class="fine">${UI.bp.mode==='fit'?`Items within your ${num(Math.max(0,left),'kcal')} kcal left today, highest protein first.`:'Per serve, counted with the restaurant margin. Lower sodium breaks ties.'} Add-ons, sides, sauces, drinks and items under 120 kcal are left out. Menus list no vitamins or minerals, so “most nutritious” can’t be ranked; protein per calorie is the closest honest measure.</p>
-  <div class="results">${l.length?l.map(x=>`<button class="res" data-a="pick" data-kind="food" data-id="${esc(x.f.id)}" data-unit="${esc(x.u[0])}"><span class="res-n">${esc(x.f.name)}</span><span class="res-m"><span>${num(x.v.kcal,'kcal')} kcal · ${num(x.v.p)} g protein · ${num(x.v.na,'mg')} mg sodium</span></span></button>`).join(''):'<p class="more">Nothing fits within what’s left today.</p>'}</div>`;
+  <p class="fine">${UI.bp.mode==='fit'?`Items within your ${num(Math.max(0,left),'kcal')} ${EUL()} left today, highest protein first.`:'Per serve, counted with the restaurant margin. Lower sodium breaks ties.'} Add-ons, sides, sauces, drinks and items under 120 kcal (500 kJ) are left out. Menus list no vitamins or minerals, so “most nutritious” can’t be ranked; protein per calorie is the closest honest measure.</p>
+  <div class="results">${l.length?l.map(x=>`<button class="res" data-a="pick" data-kind="food" data-id="${esc(x.f.id)}" data-unit="${esc(x.u[0])}"><span class="res-n">${esc(x.f.name)}</span><span class="res-m"><span>${num(x.v.kcal,'kcal')} ${EUL()} · ${num(x.v.p)} g protein · ${num(x.v.na,'mg')} mg sodium</span></span></button>`).join(''):'<p class="more">Nothing fits within what’s left today.</p>'}</div>`;
   if($('#sheet').hidden) Sheet.open(html); else Sheet.set(html);
 }
 const ACT={
@@ -1435,7 +1438,7 @@ const INP={
     box.innerHTML=searchAll(q,false,'all').filter(r=>r.kind==='food').slice(0,5).map(r=>`<li><span class="pn">${esc(r.item.name)}</span>${ex.indexOf(r.item.id)>=0?'<span class="muted">Blocked</span>':`<button class="ghost small" data-a="ideaBlock" data-id="${esc(r.item.id)}">Block</button>`}</li>`).join('')||'<li class="muted">No match</li>'; },
   like:el=>{ if(AFCD_BY_NAME.has(el.value)) fillFromLike(el.value); }
 };
-function updIng(r,i){ const it=r.items[i],f=getFood(it.fid),s=$('#ik'+i); if(f&&s){ const g=gramsOf(f,it.qty,it.unit); s.textContent=`${num(f.v.kcal*g/100,'kcal')} kcal, ${num(f.v.p*g/100)} g protein`; } refreshRecipe(r); }
+function updIng(r,i){ const it=r.items[i],f=getFood(it.fid),s=$('#ik'+i); if(f&&s){ const g=gramsOf(f,it.qty,it.unit); s.textContent=`${num(f.v.kcal*g/100,'kcal')} ${EUL()}, ${num(f.v.p*g/100)} g protein`; } refreshRecipe(r); }
 
 document.addEventListener('click',e=>{ const el=e.target.closest('[data-a]'); if(!el) return; const a=el.dataset.a; if(ACT[a]){ if(el.tagName!=='INPUT') e.preventDefault(); ACT[a](el,e); } });
 document.addEventListener('input',e=>{ const el=e.target.closest('[data-in]'); if(el&&INP[el.dataset.in]) INP[el.dataset.in](el,e); });
