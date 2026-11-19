@@ -1,16 +1,17 @@
 /* Macros service worker: keeps the app usable offline. Bump CACHE when you upload a new version. */
-const CACHE = 'macros-v2.38';
+const CACHE = 'macros-v2.44';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
-// Remove older versions' caches, including the old Google Fonts cache.
+// Remove this app's older caches (and the old Google Fonts cache). Another copy of the app installed in a subfolder
+// (cache names starting "macros3-") shares the origin's cache storage, so its caches are left alone.
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE && (k.startsWith('macros-v') || !k.startsWith('macros'))).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -22,6 +23,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Only this app's own folder: a copy installed in a subfolder (such as v3/) has its own service worker and cache.
+  if (url.pathname.slice(new URL('./', self.location).pathname.length).includes('/')) return;
   e.respondWith(caches.open(CACHE).then(async cache => {
     const hit = await cache.match(req, { ignoreSearch: true });
     const net = fetch(req).then(res => {
